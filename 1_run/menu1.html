@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CoreRR</title>
+<style>
+  :root {
+    --bg:         #0e0f16;
+    --panel:      #141621;
+    --card:       #191c2b;
+    --card-hi:    #1f2336;
+    --border:     rgba(255,255,255,0.06);
+    --border-hi:  rgba(124,92,255,0.45);
+    --text:       #e7e9f3;
+    --muted:      #8c92ab;
+    --dim:        #59607a;
+    --accent:     #7c5cff;
+    --accent-2:   #34d399;
+    --danger:     #f87171;
+    --warn:       #fbbf24;
+  }
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+  }
+  .shell {
+    display: flex; flex-direction: column;
+    width: 100%; height: 100%;
+    border: 1px solid rgba(124,92,255,0.28);
+    background:
+      radial-gradient(620px 260px at 85% -10%, rgba(124,92,255,0.16), transparent 60%),
+      radial-gradient(480px 240px at 10% 110%, rgba(52,211,153,0.08), transparent 60%),
+      var(--bg);
+  }
+  .titlebar {
+    height: 40px; flex: 0 0 40px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 12px 0 14px;
+    background: rgba(20,22,33,0.92);
+    border-bottom: 1px solid var(--border);
+  }
+  .drag { flex: 1; display: flex; align-items: center; gap: 10px; height: 100%; cursor: move; }
+  .logo {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: linear-gradient(135deg, #7c5cff, #38bdf8);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 11px; color: #fff; letter-spacing: 0.5px;
+    box-shadow: 0 2px 10px rgba(124,92,255,0.45);
+  }
+  .brand { font-weight: 700; font-size: 13px; letter-spacing: 0.4px; }
+  .brand span { color: var(--muted); font-weight: 500; margin-left: 6px; font-size: 11.5px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: 999px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); }
+  .dot.ok { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+  .dot.warn { background: var(--warn); }
+  .icon-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); cursor: pointer;
+    display: grid; place-items: center; font-size: 14px;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--border); }
+  .body { flex: 1; display: flex; min-height: 0; }
+  .nav {
+    width: 152px; flex: 0 0 152px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 12px 8px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .nav-hdr {
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    color: var(--dim); padding: 8px 10px 4px; text-transform: uppercase;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border-radius: 7px;
+    color: var(--muted); cursor: pointer; font-weight: 500;
+    border: 1px solid transparent; transition: all .12s ease;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab.active {
+    color: #fff;
+    background: linear-gradient(90deg, rgba(124,92,255,0.22), rgba(124,92,255,0.06));
+    border-color: var(--border-hi);
+  }
+  .tab svg { width: 15px; height: 15px; opacity: 0.85; flex: none; }
+  .nav-foot {
+    margin-top: auto; padding: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--dim); line-height: 1.5;
+  }
+  .nav-foot kbd {
+    display: inline-block; padding: 1px 5px; border-radius: 4px;
+    background: rgba(255,255,255,0.06); color: var(--muted);
+    font: 10.5px/1.2 Consolas, monospace;
+  }
+  .main { flex: 1; overflow-y: auto; padding: 14px 16px 18px; }
+  .main::-webkit-scrollbar { width: 6px; }
+  .main::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+  .page { display: none; flex-direction: column; gap: 11px; }
+  .page.active { display: flex; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 13px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+  .row {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    min-height: 30px; padding: 2px 0;
+  }
+  .row .lbl { color: var(--text); }
+  .row .sub { display: block; font-size: 11px; color: var(--muted); }
+  .sw {
+    position: relative; width: 34px; height: 19px; flex: none;
+    background: #25293d; border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer; transition: background .14s ease, border-color .14s ease;
+  }
+  .sw::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #9aa0b8; transition: transform .14s ease, background .14s ease;
+  }
+  .sw.on { background: var(--accent); border-color: rgba(124,92,255,0.9); }
+  .sw.on::after { transform: translateX(15px); background: #fff; }
+  .srow { display: flex; flex-direction: column; gap: 5px; padding: 4px 0; }
+  .srow-top { display: flex; justify-content: space-between; font-size: 12px; }
+  .srow-top .val { color: #c4b5fd; font-variant-numeric: tabular-nums; font-weight: 600; }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 5px;
+    background: #25293d; border-radius: 999px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--accent); cursor: pointer;
+    box-shadow: 0 1px 6px rgba(124,92,255,0.6);
+  }
+  .seg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .seg button {
+    padding: 5px 10px; border-radius: 6px;
+    background: #23273a; border: 1px solid var(--border);
+    color: var(--muted); font: 12px/1.2 inherit; cursor: pointer;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.on {
+    background: rgba(124,92,255,0.26);
+    border-color: var(--border-hi);
+    color: #fff; font-weight: 600;
+  }
+  .keybtn {
+    min-width: 96px; padding: 5px 11px; border-radius: 6px;
+    background: #23273a; border: 1px solid var(--border);
+    color: var(--text); font: 12px/1.2 Consolas, monospace; cursor: pointer;
+  }
+  .keybtn.listen {
+    border-color: var(--accent); color: #c4b5fd;
+    box-shadow: 0 0 0 2px rgba(124,92,255,0.25);
+  }
+  .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; }
+  .crow {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 8px; border-radius: 7px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  }
+  .swatch {
+    width: 24px; height: 18px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.22); cursor: pointer;
+    padding: 0; background: none;
+  }
+  .swatch::-webkit-color-swatch-wrapper { padding: 0; }
+  .swatch::-webkit-color-swatch { border: none; border-radius: 4px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stat {
+    background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+    border-radius: 7px; padding: 8px 10px;
+  }
+  .stat .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .stat .v { font-size: 15px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="titlebar">
+    <div class="drag" id="drag">
+      <div class="logo">RR</div>
+      <div class="brand">CoreRR<span>ROB RUN External</span></div>
+    </div>
+    <div class="pill"><span class="dot" id="pdot"></span><span id="pstat">Waiting for game</span></div>
+    <button class="icon-btn" id="hidebtn" title="Hide menu (F1)">&#x2715;</button>
+  </div>
+
+  <div class="body">
+    <aside class="nav">
+      <div class="nav-hdr">Modules</div>
+      <div class="tab active" data-tab="esp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        ESP
+      </div>
+      <div class="tab" data-tab="aim">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        Aimbot
+      </div>
+      <div class="tab" data-tab="world">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        World &amp; Loot
+      </div>
+      <div class="tab" data-tab="colors">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2" fill="currentColor"/><circle cx="15" cy="10" r="1.2" fill="currentColor"/><circle cx="12" cy="15" r="1.2" fill="currentColor"/></svg>
+        Colors
+      </div>
+      <div class="tab" data-tab="status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>
+        Status
+      </div>
+      <div class="nav-foot">
+        <kbd>F1</kbd> Menu<br>
+        <kbd>F2</kbd> Party Mark<br>
+        <kbd>INS</kbd> ESP &nbsp; <kbd>END</kbd> Exit
+      </div>
+    </aside>
+
+    <main class="main">
+      <!-- ESP -->
+      <section class="page active" id="page-esp">
+        <div class="card">
+          <div class="card-title">Master &amp; Players</div>
+          <div class="grid2">
+            <div class="row"><span class="lbl">Enable ESP</span><div class="sw" data-k="enabled"></div></div>
+            <div class="row"><span class="lbl">3D Chams</span><div class="sw" data-k="cham_on"></div></div>
+            <div class="row"><span class="lbl">VisCheck Colors</span><div class="sw" data-k="vischeck_colors"></div></div>
+            <div class="row"><span class="lbl">Target Snapline</span><div class="sw" data-k="snaplines_on"></div></div>
+            <div class="row"><span class="lbl">Bounding Box</span><div class="sw" data-k="show_box"></div></div>
+            <div class="row"><span class="lbl">HP / Armor Bars</span><div class="sw" data-k="show_bars"></div></div>
+            <div class="row"><span class="lbl">Skeleton</span><div class="sw" data-k="show_skeleton"></div></div>
+            <div class="row"><span class="lbl">Head Dot</span><div class="sw" data-k="show_head"></div></div>
+            <div class="row"><span class="lbl">Name &amp; Role</span><div class="sw" data-k="show_name"></div></div>
+            <div class="row"><span class="lbl">Distance</span><div class="sw" data-k="show_distance"></div></div>
+            <div class="row"><span class="lbl">Weapon</span><div class="sw" data-k="show_weapon"></div></div>
+            <div class="row"><span class="lbl">Health Text</span><div class="sw" data-k="show_health"></div></div>
+            <div class="row"><span class="lbl">Armor Tag</span><div class="sw" data-k="show_armor"></div></div>
+            <div class="row"><span class="lbl">Crouch State</span><div class="sw" data-k="show_crouch"></div></div>
+            <div class="row"><span class="lbl">Show Clan</span><div class="sw" data-k="show_clan"></div></div>
+            <div class="row"><span class="lbl">Show Police</span><div class="sw" data-k="show_police"></div></div>
+            <div class="row"><span class="lbl">Party Filter (F2)</span><div class="sw" data-k="party_filter"></div></div>
+            <div class="row"><span class="lbl">Self Info</span><div class="sw" data-k="show_self"></div></div>
+          </div>
+          <div class="row" style="margin-top:6px;">
+            <span class="lbl">Box Style</span>
+            <div class="seg" data-seg="box_style">
+              <button data-v="0">Corners</button>
+              <button data-v="1">Full Box</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Distances, Radar &amp; Privacy</div>
+          <div class="srow">
+            <div class="srow-top"><span>Max Player Distance</span><span class="val" id="v-max_distance">300 m</span></div>
+            <input type="range" data-k="max_distance" data-scale="0.01" data-unit=" m" min="1000" max="100000" step="500">
+            <div class="row"><span class="lbl">Rotate Radar</span><div class="sw" data-k="radar_rotate"></div></div>
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Skeleton Distance</span><span class="val" id="v-skel_distance">150 m</span></div>
+            <input type="range" data-k="skel_distance" data-scale="0.01" data-unit=" m" min="1000" max="100000" step="500">
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Stroke Width</span><span class="val" id="v-line_w">2 px</span></div>
+            <input type="range" data-k="line_w" data-scale="1" data-unit=" px" min="1" max="4" step="1">
+          </div>
+          <div class="grid2" style="margin-top:6px;">
+            <div class="row"><span class="lbl">Minimap Radar</span><div class="sw" data-k="radar_on"></div></div>
+            <div class="row"><span class="lbl">Stream-Proof (OBS)</span><div class="sw" data-k="stream_proof"></div></div>
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Radar Range</span><span class="val" id="v-radar_range">150 m</span></div>
+            <input type="range" data-k="radar_range" data-scale="1" data-unit=" m" min="30" max="600" step="10">
+          </div>
+          
+        </div>
+      </section>
+
+      <!-- AIMBOT -->
+      <section class="page" id="page-aim">
+        <div class="card">
+          <div class="card-title">Aim Assist</div>
+          <div class="grid2">
+            <div class="row"><span class="lbl">Enable Aimbot</span><div class="sw" data-k="aa_on"></div></div>
+            <div class="row"><span class="lbl">Draw FOV Ring</span><div class="sw" data-k="aa_show_fov"></div></div>
+            <div class="row"><span class="lbl">Visibility Check</span><div class="sw" data-k="aa_los_on"></div></div>
+            <div class="row"><span class="lbl">Closest First</span><div class="sw" data-k="aa_closest_first"></div></div>
+            <div class="row"><span class="lbl">Target Clan</span><div class="sw" data-k="aa_target_clan"></div></div>
+            <div class="row"><span class="lbl">Target Police</span><div class="sw" data-k="aa_target_police"></div></div>
+          </div>
+          <div class="row" style="margin-top:6px;">
+            <span class="lbl">Hold Key<span class="sub">Click button and press key or mouse button</span></span>
+            <button class="keybtn" id="keybtn">RMB (0x02)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Target Bone</div>
+          <div class="seg" data-seg="aa_bone">
+            <button data-v="0">Head</button>
+            <button data-v="1">Neck</button>
+            <button data-v="2">Chest</button>
+            <button data-v="3">Pelvis</button>
+            <button data-v="4">Closest</button>
+            <button data-v="7">Face</button>
+            <button data-v="5">Arms</button>
+            <button data-v="6">Legs</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Tuning</div>
+          <div class="srow">
+            <div class="srow-top"><span>FOV Radius</span><span class="val" id="v-aa_fov_px">140 px</span></div>
+            <input type="range" data-k="aa_fov_px" data-scale="1" data-unit=" px" min="10" max="600" step="5">
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Smoothing</span><span class="val" id="v-aa_smooth">6</span></div>
+            <input type="range" data-k="aa_smooth" data-scale="1" data-unit="" min="1" max="30" step="1">
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Max Target Distance</span><span class="val" id="v-aa_dist">250 m</span></div>
+            <input type="range" data-k="aa_dist" data-scale="0.01" data-unit=" m" min="1000" max="100000" step="500">
+          </div>
+          <div class="srow">
+            <div class="srow-top"><span>Mouse Calibration</span><span class="val" id="v-aa_aim_cal">100</span></div>
+            <input type="range" data-k="aa_aim_cal" data-scale="1" data-unit="" min="10" max="500" step="5">
+          </div>
+        </div>
+      </section>
+
+      <!-- WORLD -->
+      <section class="page" id="page-world">
+        <div class="card">
+          <div class="card-title">Vehicles &amp; World Objects</div>
+          <div class="grid2">
+            <div class="row"><span class="lbl">Vehicle Chams</span><div class="sw" data-k="vehicle_chams"></div></div>
+            <div class="row"><span class="lbl">Vehicle Markers</span><div class="sw" data-k="show_vehicle_markers"></div></div>
+            <div class="row"><span class="lbl">Occupant Count</span><div class="sw" data-k="show_vehicle_occupants"></div></div>
+            <div class="row"><span class="lbl">Hiding Spots ESP</span><div class="sw" data-k="show_hiding_spots"></div></div>
+            <div class="row"><span class="lbl">Containers</span><div class="sw" data-k="show_containers"></div></div>
+            <div class="row"><span class="lbl">Doors</span><div class="sw" data-k="show_doors"></div></div>
+            <div class="row"><span class="lbl">Dropped Loot</span><div class="sw" data-k="show_dropped_loot"></div></div>
+            <div class="row"><span class="lbl">Vehicle Loot</span><div class="sw" data-k="show_vehicle_loot"></div></div>
+            <div class="row"><span class="lbl">World on Radar</span><div class="sw" data-k="radar_world"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Loot &amp; Rarity Filter</div>
+          <div class="grid2">
+            <div class="row"><span class="lbl">Loose Loot</span><div class="sw" data-k="show_loot"></div></div>
+            <div class="row"><span class="lbl">Loot Nodes</span><div class="sw" data-k="show_loot_nodes"></div></div>
+            <div class="row"><span class="lbl">Common</span><div class="sw" data-k="loot_tier_common"></div></div>
+            <div class="row"><span class="lbl">Uncommon</span><div class="sw" data-k="loot_tier_uncommon"></div></div>
+            <div class="row"><span class="lbl">Rare</span><div class="sw" data-k="loot_tier_rare"></div></div>
+            <div class="row"><span class="lbl">Epic</span><div class="sw" data-k="loot_tier_epic"></div></div>
+            <div class="row"><span class="lbl">Legendary</span><div class="sw" data-k="loot_tier_legendary"></div></div>
+            <div class="row"><span class="lbl">Exotic</span><div class="sw" data-k="loot_tier_exotic"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COLORS -->
+      <section class="page" id="page-colors">
+        <div class="card">
+          <div class="card-title">Overlay &amp; VisCheck Palette</div>
+          <div class="cgrid" id="cgrid"></div>
+        </div>
+      </section>
+
+      <!-- STATUS -->
+      <section class="page" id="page-status">
+        <div class="card">
+          <div class="card-title">Live Telemetry</div>
+          <div class="stats">
+            <div class="stat"><div class="k">Game PID</div><div class="v" id="st-pid">-</div></div>
+            <div class="stat"><div class="k">Targets</div><div class="v" id="st-targets">0</div></div>
+            <div class="stat"><div class="k">3D Chams</div><div class="v" id="st-cham">0</div></div>
+            <div class="stat"><div class="k">LOS Physics</div><div class="v" id="st-los">Off</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Quick Guide</div>
+          <div style="color:var(--muted);line-height:1.65;">
+            <strong style="color:var(--text);">VisCheck Colors:</strong> highlights visible enemies in red and enemies behind walls in blue across Boxes, Skeletons, and 3D Chams.<br>
+            <strong style="color:var(--text);">Party Mark (F2):</strong> aim near a teammate in-game and press <kbd style="padding:1px 5px;background:#23273a;border-radius:4px;">F2</kbd> to toggle them in <code>party.txt</code> (excluded from Aimbot).<br>
+            <strong style="color:var(--text);">Stream-Proof:</strong> hides both the overlay and this menu window from OBS, Discord, and screen recordings.<br>
+            <strong style="color:var(--text);">Mouse Calibration:</strong> run <code>CoreRR.exe --aimtest</code> to match your in-game sensitivity.
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+const post = (o) => {
+  if (window.chrome && window.chrome.webview)
+    window.chrome.webview.postMessage(JSON.stringify(o));
+};
+
+document.getElementById('drag').addEventListener('mousedown', (e) => {
+  if (e.button === 0) post({ type: 'drag' });
+});
+document.getElementById('hidebtn').addEventListener('click', () => post({ type: 'hide' }));
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('page-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+document.querySelectorAll('.sw').forEach(el => {
+  el.addEventListener('click', () => {
+    const on = !el.classList.contains('on');
+    el.classList.toggle('on', on);
+    post({ type: 'set', k: el.dataset.k, v: on ? 1 : 0 });
+  });
+});
+
+document.querySelectorAll('input[type=range]').forEach(el => {
+  const fmt = () => {
+    const sc = parseFloat(el.dataset.scale || '1');
+    const unit = el.dataset.unit || '';
+    const num = Math.round(parseFloat(el.value) * sc);
+    const out = document.getElementById('v-' + el.dataset.k);
+    if (out) out.textContent = num + unit;
+  };
+  el.addEventListener('input', () => {
+    fmt();
+    post({ type: 'set', k: el.dataset.k, v: parseInt(el.value, 10) });
+  });
+  el._fmt = fmt;
+});
+
+document.querySelectorAll('.seg').forEach(group => {
+  const k = group.dataset.seg;
+  group.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      post({ type: 'set', k, v: parseInt(btn.dataset.v, 10) });
+    });
+  });
+});
+
+const COLOR_LABELS = [
+  [12, 'Enemy Visible (LOS)'],
+  [13, 'Enemy Behind Wall'],
+  [ 0, 'Enemy Default'],
+  [ 1, 'Party / Ally (F2)'],
+  [ 4, '3D Chams Base'],
+  [ 2, 'Skeleton'],
+  [ 3, 'Head Dot'],
+  [11, 'Target Snapline'],
+  [14, 'Aim FOV Circle'],
+  [10, 'Hiding Spot'],
+  [ 6, 'Name Text'],
+  [ 7, 'Weapon Tag'],
+  [ 8, 'Distance Tag'],
+  [ 9, 'Armor Tag'],
+  [ 5, 'Downed / Dead'],
+];
+const cgrid = document.getElementById('cgrid');
+COLOR_LABELS.forEach(([idx, label]) => {
+  const row = document.createElement('div');
+  row.className = 'crow';
+  row.innerHTML = `<span>${label}</span><input type="color" class="swatch" data-ci="${idx}" value="#ffffff">`;
+  const inp = row.querySelector('input');
+  inp.addEventListener('input', () => {
+    const h = inp.value;
+    post({
+      type: 'color', i: idx,
+      r: parseInt(h.slice(1,3), 16),
+      g: parseInt(h.slice(3,5), 16),
+      b: parseInt(h.slice(5,7), 16),
+    });
+  });
+  cgrid.appendChild(row);
+});
+
+const VK_NAMES = {
+  0x01:'LMB',0x02:'RMB',0x04:'MMB',0x05:'Mouse4',0x06:'Mouse5',
+  0x10:'Shift',0x11:'Ctrl',0x12:'Alt',0x14:'Caps',0x20:'Space',
+  0x43:'C',0x45:'E',0x46:'F',0x51:'Q',0x52:'R',0x56:'V',0x58:'X',0x5A:'Z'
+};
+const vkLabel = (vk) => `${VK_NAMES[vk] || ('Key ' + vk)} (0x${vk.toString(16).toUpperCase().padStart(2,'0')})`;
+const keybtn = document.getElementById('keybtn');
+let listening = false;
+const setKey = (vk) => {
+  listening = false;
+  keybtn.classList.remove('listen');
+  keybtn.textContent = vkLabel(vk);
+  post({ type: 'set', k: 'aa_key', v: vk });
+};
+keybtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  listening = true;
+  keybtn.classList.add('listen');
+  keybtn.textContent = 'Press key / mouse...';
+});
+window.addEventListener('keydown', (e) => {
+  if (!listening) return;
+  e.preventDefault();
+  if (e.keyCode === 27) { listening = false; keybtn.classList.remove('listen'); return; }
+  setKey(e.keyCode);
+});
+window.addEventListener('mousedown', (e) => {
+  if (!listening) return;
+  e.preventDefault();
+  const map = { 0: 0x01, 1: 0x04, 2: 0x02, 3: 0x05, 4: 0x06 };
+  if (map[e.button]) setKey(map[e.button]);
+});
+
+const toHex = ([r,g,b]) => '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+window.__setState = (s) => {
+  document.querySelectorAll('.sw').forEach(el => {
+    el.classList.toggle('on', !!s[el.dataset.k]);
+  });
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    if (typeof s[el.dataset.k] === 'number') {
+      el.value = s[el.dataset.k];
+      if (el._fmt) el._fmt();
+    }
+  });
+  document.querySelectorAll('.seg').forEach(group => {
+    const k = group.dataset.seg;
+    if (typeof s[k] === 'number') {
+      group.querySelectorAll('button').forEach(b => {
+        b.classList.toggle('on', parseInt(b.dataset.v, 10) === s[k]);
+      });
+    }
+  });
+  if (typeof s.aa_key === 'number' && !listening) keybtn.textContent = vkLabel(s.aa_key);
+  if (Array.isArray(s.colors)) {
+    document.querySelectorAll('.swatch').forEach(inp => {
+      const c = s.colors[parseInt(inp.dataset.ci, 10)];
+      if (c) inp.value = toHex(c);
+    });
+  }
+  const pdot = document.getElementById('pdot');
+  const pstat = document.getElementById('pstat');
+  if (s.telem_game_pid > 0) {
+    pdot.className = 'dot ok';
+    pstat.textContent = `Attached (${s.telem_game_pid})`;
+  } else {
+    pdot.className = 'dot warn';
+    pstat.textContent = 'Waiting for game';
+  }
+  document.getElementById('st-pid').textContent = s.telem_game_pid > 0 ? s.telem_game_pid : '-';
+  document.getElementById('st-targets').textContent = s.telem_targets ?? 0;
+  document.getElementById('st-cham').textContent = s.telem_cham_n ?? 0;
+  const losNames = ['Off', 'Building', 'Ready'];
+  document.getElementById('st-los').textContent = losNames[s.telem_los_state] || 'Off';
+};
+
+post({ type: 'ready' });
+</script>
+</body>
+</html>
